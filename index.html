@@ -1,0 +1,132 @@
+<style>
+  #view {
+    width: 600px;
+    height: 600px;
+    border: thin solid black;
+  }
+  .gene {
+    fill: red;
+  }
+  .env {
+    fill: green;
+  }
+  .phen {
+    fill: blue;
+  }
+</style>
+
+<svg id="view">
+</svg>
+
+<script>
+  const ngenes = 50;
+  const genes = [];
+  const env = [];
+  const phen = [];
+  const svg = document.querySelector("#view");
+  const tau_phen = 0.00005;
+  const tau_env = 0.0005;
+  const catalysis_weight = 0.2;
+  const phen_path = [];
+  const alpha_p2g = 0.03;
+  const alpha_e2p = 0.01;
+  const alpha_g2e = 0.01;
+
+  function init() {
+    for(let i=0;i<ngenes;i++) {
+      genes[i] = [Math.random(), Math.random()];
+    }
+    env.push([Math.random(), Math.random()]);
+    phen.push([Math.random(), Math.random()]);
+
+    let [x,y] = phen[0];
+    phen_path.push([x,y]);
+  }
+
+  function display() {
+    const [W, H] = [600,600];
+    let str = "";
+    let x, y;
+    
+    // add genes
+    for(let i=0; i<genes.length; i++) {
+      const g = genes[i];
+      ([x, y] = g);
+      str += `<g class="gene" transform="translate(${W*x},${H*y})">
+                <circle cx=0 cy=0 r=10 />
+                <text x="-6" y="5" fill="white">G</text>
+              </g>`;
+    }
+
+    // add environment
+    ([x, y] = env[0]);
+    str += `<g class="env" transform="translate(${W*x},${H*y})">
+                <circle cx=0 cy=0 r=10 />
+                <text x="-6" y="5" fill="white">E</text>
+              </g>`;
+
+    // add phenotype
+    ([x, y] = phen[0]);
+    str += `<g class="phen" transform="translate(${W*x},${H*y})">
+                <circle cx=0 cy=0 r=10 />
+                <text x="-6" y="5" fill="white">P</text>
+              </g>`;
+    
+    // add phenotypic path
+    ([x, y] = phen[0]);
+    phen_path.push([x,y]);
+    let d = `M${W*phen_path[0][0]},${H*phen_path[0][1]} `;
+    for(let i=1;i<phen_path.length;i++) {
+      ([x, y] = phen_path[i]);
+      d += `L${W*x},${H*y} `;
+    }
+    str += `<path stroke="grey" stroke-width="1" fill="none" d="${d}" />`;
+
+    svg.innerHTML = str;
+  }
+
+  function step() {
+    let [xphen, yphen] = phen[0];
+    let [xenv, yenv] = env[0];
+    let catal = [];
+
+    // environment catalyzes genetic effects
+    for(let i=0; i<genes.length; i++) {
+      const g = genes[i];
+      const [x, y] = g;
+      const dist = (x-xenv)**2 + (y-yenv)**2;
+      const catalysis = catalysis_weight/(dist + alpha_g2e);
+      g[2] = catalysis;
+    }
+
+    // phenotype is attracted to genotype
+    let [dx, dy] = [0, 0];
+    for(let i=0; i<genes.length; i++) {
+      const g = genes[i];
+      const [x, y, c] = g;
+      const dist = (x-xphen)**2 + (y-yphen)**2;
+      const attraction = c/(dist + alpha_p2g);
+      dx += attraction*(x - xphen);
+      dy += attraction*(y - yphen);
+    }
+    phen[0][0] += tau_phen*dx;
+    phen[0][1] += tau_phen*dy;
+
+    // phenotype is affected by randomness
+    phen[0][0] += 0.001*(Math.random()-0.5);
+    phen[0][1] += 0.001*(Math.random()-0.5);
+
+    // environment is attracted to phenotype
+    const dist = (xphen-xenv)**2 + (yphen-yenv)**2;
+    const attraction = 1/(dist + alpha_e2p);
+    dx = attraction*(xphen - xenv);
+    dy = attraction*(yphen - yenv);
+    env[0][0] += tau_env*dx;
+    env[0][1] += tau_env*dy;
+
+    display();
+  }
+
+  init();
+  setInterval( step, 100 );
+</script>
